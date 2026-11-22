@@ -17,7 +17,7 @@ once (shelling out to the vendor CLI, so the CLI stays the only writer of its cr
 
 | provider | source | credential | refresh |
 |---|---|---|---|
-| claude | `claude -p /usage` (free, no model call; text output parsed) | owned by claude | built in |
+| claude | `claude -p /usage` (free, no model call; text output parsed) | owned by claude | `claude -p ok --model haiku` |
 | codex | one-off `codex app-server` over stdio, `account/rateLimits/read` | `~/.codex/auth.json` (via codex) | built into the RPC |
 | google | `POST daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` | Keychain `gemini`/`antigravity` (agy) | `agy models` |
 | opencode | `GET opencode.ai/zen/go/v1/usage` | `OPENCODE_API_KEY` in `~/.env` | — |

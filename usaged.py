@@ -57,7 +57,8 @@ def span(mins): return f"{mins // 1440}d" if mins % 1440 == 0 else f"{mins // 60
 
 class Claude:
   # `claude -p /usage` is free (no model call) and lets claude own its credentials (it moves them
-  # between keychain and ~/.claude/.credentials.json on its own). we parse its text output:
+  # between keychain and ~/.claude/.credentials.json on its own). on failure, refresh() and retry.
+  # we parse its text output:
   #   Current session: 7% used · resets Nov 22 at 6:50pm (America/Los_Angeles)
   #   Current week (all models): 2% used · resets Nov 25 at 6pm (America/Los_Angeles)
   #   Current week (Fable): 0% used · resets Nov 25 at 6pm (America/Los_Angeles)
@@ -72,8 +73,11 @@ class Claude:
     for kind, scope, pct, day, hh, mm, ap, tz in self.LINE.findall(d["result"]):
       name = "5h" if kind == "session" else "7d" if scope == "all models" else f"7d {scope}"
       out.append(win(name, int(pct) / 100, self.reset(day, hh, mm, ap, tz) if day else None))
-    if not out: raise RuntimeError(f"claude /usage: unparsed output: {d['result'][:200]}")
+    # with a dead token /usage doesn't error: it silently prints local cost stats instead
+    if not out: raise Unauthorized(f"claude /usage: no subscription usage in output: {d['result'][:200]}")
     return out
+  # a real (tiny) request makes claude refresh its token; /usage and `auth status` don't
+  def refresh(self): run(f"{BIN}/claude", "-p", "ok", "--model", "haiku")
   @staticmethod
   def reset(day, hh, mm, ap, tz):  # "Nov 25", "6", "", "pm", "America/Los_Angeles"; year is implied (next occurrence)
     now = datetime.now(ZoneInfo(tz))
