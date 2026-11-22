@@ -67,7 +67,8 @@ class Claude:
       name = {"weekly": "7d"}.get(l["group"], l["group"]) + (f" {model}" if model else "")
       out.append(win(name, l["percent"] / 100, l["resets_at"]))
     return out
-  def refresh(self): run(f"{BIN}/claude", "auth", "status")
+  # `claude auth status` does not refresh; a real (tiny) request does. costs a sliver of quota.
+  def refresh(self): run(f"{BIN}/claude", "-p", "ok", "--model", "haiku")
 
 class Codex:
   # one-off `codex app-server` over stdio: account/rateLimits/read refreshes auth.json itself if needed
@@ -136,7 +137,7 @@ def poll(p):
     s = {"windows": windows, "fetched_at": iso(time.time()), "error": None}
   except Exception as e:
     s = {"error": f"{type(e).__name__}: {e}"}  # keep last good windows; fetched_at shows staleness
-    print(f"{p.id}: {s['error']}", file=sys.stderr, flush=True)
+    print(f"{iso(time.time())} {p.id}: {s['error']}", file=sys.stderr, flush=True)
   with lock: state[p.id].update(s)
 
 def poller():
