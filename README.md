@@ -28,10 +28,10 @@ non-Antigravity user agents. All `gemini-*` models share one 5h pool.
 
 Run under launchd with `co.morford.usaged.plist`.
 
-## bar/
+## usagebar/
 
 SwiftUI `MenuBarExtra`: per provider, a logo and 1–3 bars showing remaining quota; click for a table.
-Set `endpoint` in `app.swift`, then `bar/build.sh` (needs `rsvg-convert`) builds, ad-hoc signs and
+Set `endpoint` in `app.swift`, then `usagebar/build.sh` (needs `rsvg-convert`) builds, ad-hoc signs and
 installs to `~/Applications`.
 
 Logos from [lobe-icons](https://github.com/lobehub/lobe-icons) (MIT).
