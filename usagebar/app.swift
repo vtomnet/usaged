@@ -19,6 +19,9 @@ struct Usage: Decodable { let providers: [Provider] }
   var usage: Usage?
   var lastError: String?
   var lastLoad: Date?
+  var hidden = Set(UserDefaults.standard.stringArray(forKey: "hidden") ?? []) {  // providers not drawn in the menu bar
+    didSet { UserDefaults.standard.set(Array(hidden), forKey: "hidden") }
+  }
   let logos = Dictionary(uniqueKeysWithValues: order.map { id in
     let img = NSImage(contentsOf: Bundle.main.url(forResource: id, withExtension: "pdf")!)!
     img.isTemplate = true
@@ -47,7 +50,7 @@ struct Usage: Decodable { let providers: [Provider] }
   // menu bar: [logo][1-3 stacked remaining-bars] per provider, as one template image.
   // read observed state here (not in the lazy draw handler) so SwiftUI tracks it.
   var barImage: NSImage {
-    let blocks = order.map { id in (logo: logos[id]!, alpha: dim(id) ? 0.35 : 1.0, left: (provider(id)?.windows ?? []).prefix(3).map { 1 - $0.used }) }
+    let blocks = order.filter { !hidden.contains($0) }.map { id in (logo: logos[id]!, alpha: dim(id) ? 0.35 : 1.0, left: (provider(id)?.windows ?? []).prefix(3).map { 1 - $0.used }) }
     let logo: CGFloat = 14, barW: CGFloat = 16, barH: CGFloat = 2.5, gap: CGFloat = 1.5, pad: CGFloat = 3, spacing: CGFloat = 8, h: CGFloat = 18
     let block = logo + pad + barW
     let img = NSImage(size: NSSize(width: block * CGFloat(blocks.count) + spacing * CGFloat(blocks.count - 1), height: h), flipped: true) { _ in
@@ -93,12 +96,21 @@ struct Panel: View {
           let p = model.provider(id), o = model.dim(id) ? 0.5 : 1
           GridRow {
             HStack(spacing: 6) {
-              Image(nsImage: model.logos[id]!).renderingMode(.template).resizable().frame(width: 14, height: 14)
-              Text(names[id]!).bold()
+              HStack(spacing: 6) {
+                Image(nsImage: model.logos[id]!).renderingMode(.template).resizable().frame(width: 14, height: 14)
+                Text(names[id]!).bold()
+              }
+              .opacity(o)
+              Spacer()
+              // last shown provider can't be hidden, or the menu bar item would vanish
+              Toggle("Show in menu bar", isOn: Binding(
+                get: { !model.hidden.contains(id) },
+                set: { if $0 { model.hidden.remove(id) } else { model.hidden.insert(id) } }))
+                .toggleStyle(.checkbox).labelsHidden()
+                .disabled(!model.hidden.contains(id) && model.hidden.count == order.count - 1)
             }
             .gridCellColumns(4)
           }
-          .opacity(o)
           .padding(.top, id == order.first ? 0 : 8)
           ForEach(p?.windows ?? [], id: \.name) { w in
             GridRow {
