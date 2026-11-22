@@ -7,8 +7,9 @@ so the CLI stays the only writer of its own credentials) and fetches once more.
 A window is {"name": str, "used": 0..1, "resets_at": ISO-8601 UTC or None}.
 """
 from __future__ import annotations
-import base64, json, os, subprocess, sys, threading, time, urllib.error, urllib.request
-from datetime import datetime, timezone
+import base64, json, os, re, subprocess, sys, threading, time, urllib.error, urllib.request
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HOME = os.path.expanduser("~")
@@ -55,20 +56,30 @@ def span(mins): return f"{mins // 1440}d" if mins % 1440 == 0 else f"{mins // 60
 # ---- providers
 
 class Claude:
+  # `claude -p /usage` is free (no model call) and lets claude own its credentials (it moves them
+  # between keychain and ~/.claude/.credentials.json on its own). we parse its text output:
+  #   Current session: 7% used · resets Nov 22 at 6:50pm (America/Los_Angeles)
+  #   Current week (all models): 2% used · resets Nov 25 at 6pm (America/Los_Angeles)
+  #   Current week (Fable): 0% used · resets Nov 25 at 6pm (America/Los_Angeles)
   id = "claude"
+  LINE = re.compile(r"^Current (session|week \(([^)]+)\)): (\d+)% used(?: · resets (\w+ \d+) at (\d+)(?::(\d+))?([ap]m) \(([^)]+)\))?$", re.M)
   def fetch(self):
-    tok = json.loads(keychain("Claude Code-credentials"))["claudeAiOauth"]["accessToken"]
-    d = http("GET", "https://api.anthropic.com/api/oauth/usage",
-             {"Authorization": f"Bearer {tok}", "anthropic-beta": "oauth-2025-04-20"})
+    r = subprocess.run([f"{BIN}/claude", "-p", "/usage", "--output-format", "json"],
+                       capture_output=True, text=True, timeout=120, cwd="/tmp")
+    d = json.loads(r.stdout)
+    if d.get("is_error"): raise RuntimeError(f"claude /usage: {d.get('result')}")
     out = []
-    if d.get("five_hour"): out.append(win("5h", d["five_hour"]["utilization"] / 100, d["five_hour"]["resets_at"]))
-    for l in d["limits"]:
-      model = ((l.get("scope") or {}).get("model") or {}).get("display_name")
-      name = {"weekly": "7d"}.get(l["group"], l["group"]) + (f" {model}" if model else "")
-      out.append(win(name, l["percent"] / 100, l["resets_at"]))
+    for kind, scope, pct, day, hh, mm, ap, tz in self.LINE.findall(d["result"]):
+      name = "5h" if kind == "session" else "7d" if scope == "all models" else f"7d {scope}"
+      out.append(win(name, int(pct) / 100, self.reset(day, hh, mm, ap, tz) if day else None))
+    if not out: raise RuntimeError(f"claude /usage: unparsed output: {d['result'][:200]}")
     return out
-  # `claude auth status` does not refresh; a real (tiny) request does. costs a sliver of quota.
-  def refresh(self): run(f"{BIN}/claude", "-p", "ok", "--model", "haiku")
+  @staticmethod
+  def reset(day, hh, mm, ap, tz):  # "Nov 25", "6", "", "pm", "America/Los_Angeles"; year is implied (next occurrence)
+    now = datetime.now(ZoneInfo(tz))
+    t = datetime.strptime(f"{day} {now.year} {hh}:{mm or '00'}{ap}", "%b %d %Y %I:%M%p").replace(tzinfo=ZoneInfo(tz))
+    if t < now - timedelta(days=1): t = t.replace(year=now.year + 1)
+    return t.timestamp()
 
 class Codex:
   # one-off `codex app-server` over stdio: account/rateLimits/read refreshes auth.json itself if needed
