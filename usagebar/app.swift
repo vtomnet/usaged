@@ -129,7 +129,7 @@ struct Panel: View {
       Divider()
       HStack {
         Text(model.lastError.map { "Daemon unreachable: \($0)" } ?? model.lastLoad.map { "Updated \($0.formatted(date: .omitted, time: .shortened))" } ?? "Loading…")
-          .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+          .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         Spacer()
         Button("Refresh") { Task { await model.load() } }.keyboardShortcut("r")
         Button("Quit") { NSApp.terminate(nil) }.keyboardShortcut("q")
