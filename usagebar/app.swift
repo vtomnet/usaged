@@ -2,8 +2,8 @@ import SwiftUI
 import ServiceManagement
 
 let endpoint = URL(string: "http://100.94.89.105:8787/usage")!  // usaged on mini, tailnet only
-let order = ["claude", "codex", "opencode", "google", "kimi"]
-let names = ["claude": "Claude", "codex": "ChatGPT", "google": "Google", "opencode": "OpenCode", "kimi": "Moonshot"]
+let order = ["claude", "codex", "opencode", "google", "kimi", "zai"]
+let names = ["claude": "Claude", "codex": "ChatGPT", "google": "Google", "opencode": "OpenCode", "kimi": "Moonshot", "zai": "Z.ai"]
 let staleAfter: TimeInterval = 15 * 60
 
 func until(_ d: Date) -> String {

@@ -1,6 +1,6 @@
 # usaged
 
-Subscription usage for Claude, ChatGPT/Codex, Google Antigravity (Gemini), OpenCode Go and Kimi Code,
+Subscription usage for Claude, ChatGPT/Codex, Google Antigravity (Gemini), OpenCode Go, Kimi Code and Z.ai,
 collected by one daemon and shown in a macOS menu bar app.
 
 ## usaged.py
@@ -22,6 +22,7 @@ once (shelling out to the vendor CLI, so the CLI stays the only writer of its cr
 | google | `POST daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` | Keychain `gemini`/`antigravity` (agy) | `agy models` |
 | opencode | `GET opencode.ai/zen/go/v1/usage` | `OPENCODE_API_KEY` in `~/.env` | — |
 | kimi | `GET api.kimi.com/coding/v1/usages` | `KIMI_CODE_API_KEY` in `~/.env` | — |
+| zai | `GET api.z.ai/api/monitor/usage/quota/limit` | `ZAI_API_KEY` in `~/.env` | — |
 
 Notes: Antigravity meters on `daily-cloudcode-pa` (prod `cloudcode-pa` never moves) and 403s
 non-Antigravity user agents. All `gemini-*` models share one 5h pool.

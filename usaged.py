@@ -135,7 +135,21 @@ class Kimi:
     u = http("GET", "https://api.kimi.com/coding/v1/usages", {"Authorization": f"Bearer {env('KIMI_CODE_API_KEY')}"})["usages"]
     return [win(n, u[k]["used_ratio"], u[k]["reset_time"]) for k, n in (("limit_5h", "5h"), ("limit_7d", "7d"))]
 
-PROVIDERS = [Claude(), Codex(), Google(), OpenCode(), Kimi()]
+class Zai:
+  # limits: {type: CREDIT_LIMIT, unit, number, usage (cap), remaining, nextResetTime ms}. unit 3=hours, 6=weeks.
+  # `percentage` is clamped to >=1, so derive used from remaining/usage.
+  id = "zai"
+  UNITS = {3: "h", 6: "w"}
+  def fetch(self):
+    d = http("GET", "https://api.z.ai/api/monitor/usage/quota/limit", {"Authorization": f"Bearer {env('ZAI_API_KEY')}"})["data"]
+    out = []
+    for l in d["limits"]:
+      n, u = l["number"], self.UNITS[l["unit"]]
+      name = f"{n * 7}d" if u == "w" else f"{n}{u}"
+      out.append(win(name, 1 - l["remaining"] / l["usage"], l["nextResetTime"] / 1000))
+    return out
+
+PROVIDERS = [Claude(), Codex(), Google(), OpenCode(), Kimi(), Zai()]
 
 # ---- poller + server
 
