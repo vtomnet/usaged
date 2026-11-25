@@ -132,11 +132,14 @@ class OpenCode:
 class Kimi:
   id = "kimi"
   def fetch(self):
-    u = http("GET", "https://api.kimi.com/coding/v1/usages", {"Authorization": f"Bearer {env('KIMI_CODE_API_KEY')}"})["usages"]
+    d = http("GET", "https://api.kimi.com/coding/v1/usages", {"Authorization": f"Bearer {env('KIMI_CODE_API_KEY')}"})
+    if "usages" not in d: raise RuntimeError(f"kimi returned no usage data: {json.dumps(d)[:100]}")  # seen: 200 {} (server-side)
+    u = d["usages"]
     return [win(n, u[k]["used_ratio"], u[k]["reset_time"]) for k, n in (("limit_5h", "5h"), ("limit_7d", "7d"))]
 
 class Zai:
   # limits: {type: CREDIT_LIMIT, unit, number, usage (cap), remaining, nextResetTime ms}. unit 3=hours, 6=weeks.
+  # an unused window omits nextResetTime (it starts on first use).
   # `percentage` is clamped to >=1, so derive used from remaining/usage.
   id = "zai"
   UNITS = {3: "h", 6: "w"}
@@ -146,7 +149,7 @@ class Zai:
     for l in d["limits"]:
       n, u = l["number"], self.UNITS[l["unit"]]
       name = f"{n * 7}d" if u == "w" else f"{n}{u}"
-      out.append(win(name, 1 - l["remaining"] / l["usage"], l["nextResetTime"] / 1000))
+      out.append(win(name, 1 - l["remaining"] / l["usage"], l["nextResetTime"] / 1000 if "nextResetTime" in l else None))
     return out
 
 PROVIDERS = [Claude(), Codex(), Google(), OpenCode(), Kimi(), Zai()]
